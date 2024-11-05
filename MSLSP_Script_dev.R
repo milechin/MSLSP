@@ -142,11 +142,21 @@ phenYrs <- phenStartYr:phenEndYr     #What years will we calculate phenology for
 # imgList <- list.files(path=params$dirs$imgDir, pattern=glob2rx("HLS*Fmask.tif"), full.names=T, recursive=T)
 # imgList <- list.dirs(path=params$dirs$imgDir, full.names=T)[-1]
 if(params$setup$AWS_or_SCC == "SCC" & params$SCC$runS10) {
-  imgList <- list.files(path=params$dirs$imgDir, full.names=T, recursive=T) #pattern=glob2rx('*SCL*20m*'), )
+
+  imgList <- list.files(path=params$dirs$imgDir, full.names=T, recursive=T, pattern=glob2rx('*SCL*20m*') )
   for(img in imgList){
     # re-sampling the Sentinel-2 mask to 10m
     newMask <- gsub('20m', '10m', img)
-    run <- try({system2("gdalwarp",paste("-overwrite -r near -ts 10980 10980 -of GTiff",img,newMask),stdout=T,stderr=T)},silent=T)
+    if(file.exists(newMask) == FALSE){
+      run <- try(
+        {
+          system2("gdalwarp", paste("-overwrite -r near -ts 10980 10980 -of GTiff", img, newMask),
+          stdout=T,
+          stderr=T)
+        },
+        silent=FALSE)
+    }
+    
   }
   imgList <- list.files(path=params$dirs$imgDir, pattern=glob2rx('*SCL*10m*'), full.names=T, recursive=T)
 } else {
