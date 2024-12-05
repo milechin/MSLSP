@@ -1,3 +1,4 @@
+
 #Douglas Bolton, and Minkyu Moon, Boston University
 #Main script for running HLS Land Surface Phenology
 #######################################################################################
@@ -150,7 +151,7 @@ if(params$setup$AWS_or_SCC == "SCC" & params$SCC$runS10) {
     if(file.exists(newMask) == FALSE){
       run <- try(
         {
-          system2("gdalwarp", paste("-overwrite -r near -ts 10980 10980 -of GTiff", img, newMask),
+          system2("gdalwarp", paste("-overwrite -r near -ts 1098 1098 -of GTiff", img, newMask),
           stdout=T,
           stderr=T)
         },
@@ -251,6 +252,8 @@ if (params$setup$preprocessImagery) {
   imgLog <- foreach(j=1:length(imgList),.combine=c) %dopar% {
     log <- try({ApplyMask_QA(imgList[j], tile, waterMask, chunkStart, chunkEnd, params)},silent=T)
     if (inherits(log, 'try-error')) {cat(paste('ApplyMask_QA: Error for', imgList[j],'\n'), file=errorLog, append=T)}  #If there's an error, keep going, but write to error log
+    #log <- ApplyMask_QA(imgList[j], tile, waterMask, chunkStart, chunkEnd, params)
+    #cat(paste(log, file=errorLog, append=T))
   }
 
   #Topographic Correction of images
@@ -305,6 +308,7 @@ if (params$setup$preprocessImagery) {
         #Perform kmeans. Must first remove NA values (otherwise kmeans fails). Topo correction will be performed for each class
         goodPix <- !is.na(rowMeans(indexImg))
         # kClust <- kmeans(indexImg[goodPix,], topo_pars$kmeansClasses, iter.max = topo_pars$kmeansIterations)
+	print(indexImg[goodPix,])
         kClust <- kmeans(indexImg[goodPix,], topo_pars$kmeansClasses, iter.max = 700)
         groups <- matrix(0,numPix)
         groups[goodPix] <-  kClust$cluster
@@ -380,6 +384,7 @@ total_time <- as.numeric(difftime(Sys.time(),start_time,units="mins"))
 line <- paste(tile, time_step1, time_step2, total_time, sep=',')
 line <- paste0(line,'\n')
 cat(paste0('Total_Minutes:',round(total_time,1),'\n'), file=runLog, append=T)
+
 
 
 

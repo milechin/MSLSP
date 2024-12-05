@@ -121,6 +121,12 @@ ApplyMask_QA <-function(imgName, tile, waterMask, chunkStart, chunkEnd, params, 
   
   pheno_pars <- params$phenology_parameters   #Pull phenology parameters
   
+  #print(c("imgName: ", imgName))
+  #print(c("tile: ", tile))
+  #print(c("waterMask: ", waterMask))
+  #print(c("chunkStart: ", chunkStart))
+  #print(c("chunkEnd: ", chunkEnd))
+
   #Get sensor, names sorted
   imgName_strip = tail(unlist(strsplit(imgName,'/')),n = 1)
   if(unlist(strsplit(imgName_strip,''))[1] == 'T'){
@@ -145,7 +151,7 @@ ApplyMask_QA <-function(imgName, tile, waterMask, chunkStart, chunkEnd, params, 
   # qaName = paste0(imgName,'/',imgName_strip,'.Fmask.tif')
   if(sensor == 'S10'){
     qaName = imgName 
-    maskList <- getMasksS10(qaName)
+    maskList <- getMasksS10(qaName) ## CHECK THIS FUNCTION: above, outputs snow and cloud pixel mask
   }
   else{
     qaName = paste0(imgName,'/',imgName_strip,'.Fmask.tif')
@@ -186,26 +192,33 @@ ApplyMask_QA <-function(imgName, tile, waterMask, chunkStart, chunkEnd, params, 
     
   } else if (sensor == 'S10') {
     imgName_strip <- paste(unlist(strsplit(imgName_strip, '_'))[1:2], collapse = '_')
+
     folderName <- tail(unlist(strsplit(imgName, '/')), 2)[1]
     theBase <- paste0(params$dirs$imgDir, folderName, '/', imgName_strip)
     #Need to get all bands to 10m first. Using Broad band NIR (10m) instead of Narrow (20m)
-    # bNames <- c('B08','B11','B12','B05','B06','B07')
+    #bNames <- c('B08','B11','B12','B05','B06','B07')
     bNames <- c('B11','B12','B05','B06','B07')
     # tifBase <- paste0(params$dirs$tempDir,gsub('tif','',imgName_strip)) # the S10 data that I have downloaded is in tif not hdf
     tifBase <- paste0(params$dirs$tempDir, imgName_strip)
     for (bName in bNames) {
       inName <- paste0(theBase, '_', bName,'_20m.tif');outName <- paste0(tifBase,bName,'.tif')
-      run <- try({system2("gdalwarp",paste("-overwrite -r near -ts 10980 10980 -of GTiff",inName,outName),stdout=T,stderr=T)},silent=T)
+      run <- try({system2("gdalwarp",paste("-overwrite -r near -ts 1098 1098 -of GTiff",inName,outName),stdout=T,stderr=T)},silent=T)
     }
     
-    fullNames <- c(paste0(theBase, '_', c('B02','B03','B04', 'B08'), '_10m.tif'),
+    fullNames <- c(paste0(theBase, '_', c('B02','B03','B04', 'B08'), '_10m.tif'), 
                    paste0(tifBase,bNames,'.tif'))
+    # print(c("fullNames: ", fullNames)) # it does get to the fullNames
     
     bands <- matrix(as.integer(0),length(mask),length(fullNames))
     
     # for (i in 1:length(fullNames)) {bands[,i] <- as.integer(readGDAL(fullNames[i],silent=T)$band1*10000)}
     # for (i in 1:length(fullNames)) {bands[,i] <- as.integer(values(rast(fullNames[i]))*10000)}
-    for (i in 1:length(fullNames)) {bands[,i] <- as.integer(values(rast(fullNames[i])))}
+    for (i in 1:length(fullNames)) {
+	#print(values(rast(fullNames[i])))
+        #print(c("as integer: ", as.integer(values(rast(fullNames[i])))))
+	bands[,i] <- as.integer(values(rast(fullNames[i])))
+    }
+    #print(c("bands: ", bands)) # has band values and everything
     
     for (bName in bNames) {file.remove(paste0(tifBase,bName,'.tif'))}
     
@@ -216,7 +229,7 @@ ApplyMask_QA <-function(imgName, tile, waterMask, chunkStart, chunkEnd, params, 
   #If NDMI > 0.5 AND the pixel is within 5 km of detected snow, then mask
   if (!params$topocorrection_parameters$topoCorrect) {
     if (sum(snow) > 0) {
-      additional_snow_mask <- runSnowScreen(snow,bands[,4],bands[,5],params)
+      additional_snow_mask <- runSnowScreen(snow,bands[,4],bands[,5],params) # maybe here is where the error is?
       mask[additional_snow_mask] <- TRUE
       remove(additional_snow_mask)}
   }
@@ -228,6 +241,7 @@ ApplyMask_QA <-function(imgName, tile, waterMask, chunkStart, chunkEnd, params, 
   
   #Mask pixels that have missing data in ANY band. These are likely problem pixels (and we need most bands for despiking, kmeans, snow detection, etc).
   check <- rowSums(is.na(bands)) > 0
+  # print(c("check: ", check))
   bands[check,] <- NA
   
   #We remove potentially snowy observations using NDMI, but we are only going to label pixels that were actually detected as snow as snow
