@@ -120,12 +120,6 @@ getMasksS10 <-function(qaName) {
 ApplyMask_QA <-function(imgName, tile, waterMask, chunkStart, chunkEnd, params, deleteInput=F) {
   
   pheno_pars <- params$phenology_parameters   #Pull phenology parameters
-  
-  #print(c("imgName: ", imgName))
-  #print(c("tile: ", tile))
-  #print(c("waterMask: ", waterMask))
-  #print(c("chunkStart: ", chunkStart))
-  #print(c("chunkEnd: ", chunkEnd))
 
   #Get sensor, names sorted
   imgName_strip = tail(unlist(strsplit(imgName,'/')),n = 1)
@@ -151,7 +145,7 @@ ApplyMask_QA <-function(imgName, tile, waterMask, chunkStart, chunkEnd, params, 
   # qaName = paste0(imgName,'/',imgName_strip,'.Fmask.tif')
   if(sensor == 'S10'){
     qaName = imgName 
-    maskList <- getMasksS10(qaName) ## CHECK THIS FUNCTION: above, outputs snow and cloud pixel mask
+    maskList <- getMasksS10(qaName)
   }
   else{
     qaName = paste0(imgName,'/',imgName_strip,'.Fmask.tif')
@@ -207,18 +201,14 @@ ApplyMask_QA <-function(imgName, tile, waterMask, chunkStart, chunkEnd, params, 
     
     fullNames <- c(paste0(theBase, '_', c('B02','B03','B04', 'B08'), '_10m.tif'), 
                    paste0(tifBase,bNames,'.tif'))
-    # print(c("fullNames: ", fullNames)) # it does get to the fullNames
     
     bands <- matrix(as.integer(0),length(mask),length(fullNames))
     
     # for (i in 1:length(fullNames)) {bands[,i] <- as.integer(readGDAL(fullNames[i],silent=T)$band1*10000)}
     # for (i in 1:length(fullNames)) {bands[,i] <- as.integer(values(rast(fullNames[i]))*10000)}
     for (i in 1:length(fullNames)) {
-	#print(values(rast(fullNames[i])))
-        #print(c("as integer: ", as.integer(values(rast(fullNames[i])))))
 	bands[,i] <- as.integer(values(rast(fullNames[i])))
     }
-    #print(c("bands: ", bands)) # has band values and everything
     
     for (bName in bNames) {file.remove(paste0(tifBase,bName,'.tif'))}
     
@@ -229,7 +219,7 @@ ApplyMask_QA <-function(imgName, tile, waterMask, chunkStart, chunkEnd, params, 
   #If NDMI > 0.5 AND the pixel is within 5 km of detected snow, then mask
   if (!params$topocorrection_parameters$topoCorrect) {
     if (sum(snow) > 0) {
-      additional_snow_mask <- runSnowScreen(snow,bands[,4],bands[,5],params) # maybe here is where the error is?
+      additional_snow_mask <- runSnowScreen(snow,bands[,4],bands[,5],params)
       mask[additional_snow_mask] <- TRUE
       remove(additional_snow_mask)}
   }
@@ -241,7 +231,6 @@ ApplyMask_QA <-function(imgName, tile, waterMask, chunkStart, chunkEnd, params, 
   
   #Mask pixels that have missing data in ANY band. These are likely problem pixels (and we need most bands for despiking, kmeans, snow detection, etc).
   check <- rowSums(is.na(bands)) > 0
-  # print(c("check: ", check))
   bands[check,] <- NA
   
   #We remove potentially snowy observations using NDMI, but we are only going to label pixels that were actually detected as snow as snow
@@ -249,7 +238,7 @@ ApplyMask_QA <-function(imgName, tile, waterMask, chunkStart, chunkEnd, params, 
   
   for (n in 1:length(chunkStart)) {
     mat <- as.integer(bands[chunkStart[n]:chunkEnd[n],])
-    if (all(is.na(mat))) {next} #if there is no good data in the chunk, move to next chunk
+    if (all(is.na(mat))) { next } #if there is no good data in the chunk, move to next chunk
     saveRDS(mat,paste0(params$dirs$chunkDir,'c',n,'/',outBase,'.Rds'))
   }
   #If requested, delete the input file once it is processed

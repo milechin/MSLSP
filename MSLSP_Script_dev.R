@@ -287,6 +287,8 @@ if (params$setup$preprocessImagery) {
     for (yr in uniqueYrs) {
       subList <- imgList[years==yr]
       subDOY  <- doys[years==yr]
+      print(c("subList: ", subList))
+      print(c("subDOY: ", subDOY))
       
       if (length(subList) > 0) {
         #Check if the first year has enough data (images back to DOY 60 or whatever specified). If it doesn't, then use the next year's VIs for kmeans
@@ -308,7 +310,6 @@ if (params$setup$preprocessImagery) {
         #Perform kmeans. Must first remove NA values (otherwise kmeans fails). Topo correction will be performed for each class
         goodPix <- !is.na(rowMeans(indexImg))
         # kClust <- kmeans(indexImg[goodPix,], topo_pars$kmeansClasses, iter.max = topo_pars$kmeansIterations)
-	print(indexImg[goodPix,])
         kClust <- kmeans(indexImg[goodPix,], topo_pars$kmeansClasses, iter.max = 700)
         groups <- matrix(0,numPix)
         groups[goodPix] <-  kClust$cluster
