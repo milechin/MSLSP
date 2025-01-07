@@ -312,7 +312,8 @@ getIndexQuantile <- function(chunk, numPix, yr, errorLog, params) {
   
   #Make empty output
   indexOut <- matrix(NA,numPix,length(topo_pars$topoVIs)*length(topo_pars$viQuantiles))
-  
+
+  # TODO: Add DEBUG support here
   log <- try({
     
     #Get all images to process
@@ -350,6 +351,8 @@ getIndexQuantile <- function(chunk, numPix, yr, errorLog, params) {
 
         for (i in 1:numImgs) {
           if (DEBUG == FALSE){
+
+            # TODO: Add DEBUG support here
             imgData <- try(read_data(chunkFold,imgList[i], numPix),silent = TRUE)
             if (inherits(imgData, 'try-error')) {cat(paste('getIndexQuantile: Error for chunk',chunk,imgList[i]), file=errorLog, append=T);next} 
             
@@ -465,6 +468,8 @@ runTopoCorrection <- function(imgName, groups, slopeVals, aspectVals, chunkStart
     fName <- paste0(params$dirs$chunkDir,'c',n,'/',outBase,'.Rds')
     if (file.exists(fName)) {
       numPix <- length(chunkStart[n]:chunkEnd[n])
+
+      # TODO: Add DEBUG support here
       imgData <- try(matrix(readRDS(fName),nrow=numPix),silent = TRUE)
       if (inherits(imgData, 'try-error')) {cat(paste('runTopoCorrection: Error for chunk',n,outBase), file=errorLog, append=T);next}
       bands[chunkStart[n]:chunkEnd[n],] <- imgData
@@ -577,6 +582,8 @@ runPhenoChunk <- function(chunk, numPix, imgYrs, phenYrs, errorLog, params) {
   
   for (i in 1:length(ord)) {
     img <- imgList[ord[i]]
+
+    # TODO: Add DEBUG support here
     imgData <- try(matrix(readRDS(paste0(chunkFold,img)),nrow=numPix),silent = TRUE)
     if (inherits(imgData, 'try-error')) {cat(paste('runPhenoChunk: Error for chunk',chunk,img), file=errorLog, append=T);next} 
     
@@ -717,6 +724,8 @@ topocorr_rotational_by_group <-function(x, groups, slope, aspect, sunzenith, sun
       ##Break IL into groups. Sample within each group
       breaks <- seq(quantile(ilSub,prob=0.02),quantile(ilSub,prob=0.98),length.out=(topo_pars$numILclass+1))    #Using 2 and 98% percentiles to reduce influece of outliers
       breaks[1] <- min(ilSub); breaks[length(breaks)] <- max(ilSub)
+
+      # TODO: Add DEBUG support here
       ilGroup <- try({as.numeric(cut(ilSub,breaks=breaks,labels=1:topo_pars$numILclass,include.lowest=T))},silent=T)  #Group pixels
       if (inherits(ilGroup, 'try-error')) {next}    #If pixels can't be grouped, move on
       pixID <- 1:length(ilGroup)
@@ -738,6 +747,8 @@ topocorr_rotational_by_group <-function(x, groups, slope, aspect, sunzenith, sun
       
       #If image outputs were requested, then create some IL scatterplots
       if (!is.null(plotBaseName)) {
+
+        # TODO: Add DEBUG support here
         try({
           if (b == 3 | b == 4) {   #only for RED and NIR channel
             
@@ -1336,6 +1347,8 @@ GetSegMetricsLight <- function(seg, smooth_dates, raw_dates){
 annualMetrics <- function(smoothed_vi, pred_dates, filled_vi, baseWeight, yr, pheno_pars) {
   
   out <- matrix(NA,pheno_pars$numLyrs)
+
+  # TODO: Add DEBUG support here
   try({
     inyear <- as.numeric(format(pred_dates,'%Y')) == yr
     vi_inyear  <- smoothed_vi[inyear]
@@ -1434,6 +1447,8 @@ calculateWeights <- function(smoothMat_Masked, numDaysFit, numYrs, pheno_pars) {
 DoPhenologyHLS <- function(b2, b3, b4, b5, b6, b7, vi, snowPix, dates, imgYrs, phenYrs, splineStart, splineEnd, numDaysFit, pheno_pars, errorLog){
   
   #Despike, calculate dormant value, fill snow with dormant value, despike poorly fit snow values
+  #TODO: Add debug support here
+
   log <- try({
     #Despike
     spikes <- CheckSpike_MultiBand(b2/10000,b4/10000,vi, dates, pheno_pars)
@@ -1516,6 +1531,8 @@ DoPhenologyHLS <- function(b2, b3, b4, b5, b6, b7, vi, snowPix, dates, imgYrs, p
 
     for (y in 1:numYrs) {
       #Use try statement, because we don't want to stop processing if only an error in one year
+
+      # TODO: Add DEBUG support here
       try({
 
         dateRange <- dates >= splineStart[y] & dates <= splineEnd[y] & !is.na(vi)
@@ -1584,6 +1601,8 @@ DoPhenologyHLS <- function(b2, b3, b4, b5, b6, b7, vi, snowPix, dates, imgYrs, p
   outAll=c()
   
   for (y in yToDo) {
+
+    # TODO: Add DEBUG support here
     log <- try({
 
       pred_dates <- seq(splineStart[y], splineEnd[y], by="day")
@@ -1864,6 +1883,8 @@ readLyrChunks <- function(lyr, yr, numChunks, numPix, tempDir) {
   mat <- matrix(NA,numPix,1)
   for (n in 1:numChunks) {
     fileName <- paste0(tempDir,'outputs/y',yr,'/lyr',lyr,'/c',n,'.Rds')
+
+    # TODO: Add DEBUG support here
     matSub <- try(readRDS(fileName),silent=T)
     if (inherits(matSub, 'try-error')) {next} 
     mat[chunkStart[n]:chunkEnd[n]] <- matSub
