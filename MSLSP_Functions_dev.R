@@ -117,7 +117,7 @@ getMasksS10 <-function(qaName) {
 #If a chunk is empty (no data), don't write to disk. Huge I/O savings.
 #Douglas Bolton
 #---------------------------------------------------------------------
-ApplyMask_QA <-function(imgName, tile, waterMask, chunkStart, chunkEnd, params, deleteInput=F) {
+ApplyMask_QA <-function(imgName, tile, waterMask, chunkStart, chunkEnd, params, deleteInput=F, DEBUG=FALSE) {
   
   pheno_pars <- params$phenology_parameters   #Pull phenology parameters
 
@@ -196,7 +196,20 @@ ApplyMask_QA <-function(imgName, tile, waterMask, chunkStart, chunkEnd, params, 
     tifBase <- paste0(params$dirs$tempDir, imgName_strip)
     for (bName in bNames) {
       inName <- paste0(theBase, '_', bName,'_20m.tif');outName <- paste0(tifBase,bName,'.tif')
-      run <- try({system2("gdalwarp",paste("-overwrite -r near -ts 1098 1098 -of GTiff",inName,outName),stdout=T,stderr=T)},silent=T)
+
+      cmd <- "gdalwarp"
+      args <- paste("-overwrite -r near -ts 1098 1098 -of GTiff",inName,outName)
+
+      if (DEBUG == FALSE){
+        run <- try({system2(cmd, args,stdout=T,stderr=T)},silent=T)
+      }
+      else{
+        ret <- system2(cmd, args)
+        if(ret != 0){
+          stop(paste("Error running command:\n", cmd, args, "\n Stopping execution."))
+        }
+      }
+
     }
     
     fullNames <- c(paste0(theBase, '_', c('B02','B03','B04', 'B08'), '_10m.tif'), 
@@ -207,7 +220,7 @@ ApplyMask_QA <-function(imgName, tile, waterMask, chunkStart, chunkEnd, params, 
     # for (i in 1:length(fullNames)) {bands[,i] <- as.integer(readGDAL(fullNames[i],silent=T)$band1*10000)}
     # for (i in 1:length(fullNames)) {bands[,i] <- as.integer(values(rast(fullNames[i]))*10000)}
     for (i in 1:length(fullNames)) {
-	bands[,i] <- as.integer(values(rast(fullNames[i])))
+	    bands[,i] <- as.integer(values(rast(fullNames[i])))
     }
     
     for (bName in bNames) {file.remove(paste0(tifBase,bName,'.tif'))}
@@ -329,9 +342,20 @@ getIndexQuantile <- function(chunk, numPix, yr, errorLog, params) {
         b2 <- matrix(NA,numPix,numImgs); b3 <- matrix(NA,numPix,numImgs)
         b4 <- matrix(NA,numPix,numImgs); b5 <- matrix(NA,numPix,numImgs)
         b6 <- matrix(NA,numPix,numImgs); b7 <- matrix(NA,numPix,numImgs)
+
+        read_data <- function(chunkFolder, img, pix){
+            data <- matrix(readRDS(paste0(chunkFolder,img)),nrow=pix)
+            return(data)
+        }
+
         for (i in 1:numImgs) {
-          imgData <- try(matrix(readRDS(paste0(chunkFold,imgList[i])),nrow=numPix),silent = TRUE)
-          if (inherits(imgData, 'try-error')) {cat(paste('getIndexQuantile: Error for chunk',chunk,imgList[i]), file=errorLog, append=T);next} 
+          if (DEBUG == FALSE){
+            imgData <- try(read_data(chunkFold,imgList[i], numPix),silent = TRUE)
+            if (inherits(imgData, 'try-error')) {cat(paste('getIndexQuantile: Error for chunk',chunk,imgList[i]), file=errorLog, append=T);next} 
+            
+          } else {
+            imgData <- read_data(chunkFold,imgList[i], numPix)
+          }
           imgData[imgData == params$phenology_parameters$snowFillVal] <- NA
           imgData <- imgData / 10000
           b2[,i] <- imgData[,1]; b3[,i] <- imgData[,2]; b4[,i] <- imgData[,3]
