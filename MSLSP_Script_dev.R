@@ -326,7 +326,7 @@ if (params$setup$preprocessImagery) {
         
         #Calculate the VIs by reading in image chunks, and calcuating percentiles
         indexImg <- foreach(j=1:numChunks,.combine=rbind) %dopar% {
-          getIndexQuantile(j, numPixPerChunk[j], yrPull, errorLog, params)}
+          getIndexQuantile(j, numPixPerChunk[j], yrPull, errorLog, params, DEBUG=DEBUG)}
         
         #Convert VIs to z-scores prior to kmeans
         for (i in 1:dim(indexImg)[2]) {
@@ -389,7 +389,7 @@ if (params$setup$runPhenology) {
     }
   } else {
     for(j in 1:numChunks){
-      runPhenoChunk(j, numPixPerChunk[j], imgYrs, phenYrs, errorLog, params)
+      runPhenoChunk(j, numPixPerChunk[j], imgYrs, phenYrs, errorLog, params, DEBUG=DEBUG)
     }
   }
   

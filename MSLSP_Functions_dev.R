@@ -3,6 +3,18 @@
 #Functions written by Josh Gray, Douglas Bolton, ,Eli Melaas, and Minkyu Moon
 ###############
 
+#---------------------------------------------------------------------
+#Determines what value to use for "silence" for the try() function calls
+#Dennis Milechin
+#---------------------------------------------------------------------
+get_silence_try_arg <- function(DEBUG_MODE){
+  if(DEBUG_MODE == TRUE){
+    SILENCE_TRY <- FALSE
+  } else{
+    SILENCE_TRY <- TRUE
+  }
+  return(SILENCE_TRY)
+}
 
 
 #---------------------------------------------------------------------
@@ -302,18 +314,30 @@ runSnowScreen <- function(snow, nir, swir1, params) {
 
 
 #---------------------------------------------------------------------
+#Helper function to read in data
+#Dennis Milechin
+#---------------------------------------------------------------------
+read_data <- function(file, pix){
+    data <- matrix(readRDS(file),nrow=pix)
+    return(data)
+}
+
+
+#---------------------------------------------------------------------
 #Calculate annual quantiles for spectral indices
 #We will use these quantiles to create kmeans classes for topographic correction
 #Douglas Bolton
 #---------------------------------------------------------------------
-getIndexQuantile <- function(chunk, numPix, yr, errorLog, params) {
+getIndexQuantile <- function(chunk, numPix, yr, errorLog, params, DEBUG=FALSE) {
   
+  SILENCE_TRY_BOOLEAN <- get_silence_try_arg(DEBUG)
+
   topo_pars <- params$topocorrection_parameters  #isolate topo parameters
   
   #Make empty output
   indexOut <- matrix(NA,numPix,length(topo_pars$topoVIs)*length(topo_pars$viQuantiles))
 
-  # TODO: Add DEBUG support here
+
   log <- try({
     
     #Get all images to process
@@ -344,21 +368,15 @@ getIndexQuantile <- function(chunk, numPix, yr, errorLog, params) {
         b4 <- matrix(NA,numPix,numImgs); b5 <- matrix(NA,numPix,numImgs)
         b6 <- matrix(NA,numPix,numImgs); b7 <- matrix(NA,numPix,numImgs)
 
-        read_data <- function(chunkFolder, img, pix){
-            data <- matrix(readRDS(paste0(chunkFolder,img)),nrow=pix)
-            return(data)
-        }
-
         for (i in 1:numImgs) {
           if (DEBUG == FALSE){
-
-            # TODO: Add DEBUG support here
-            imgData <- try(read_data(chunkFold,imgList[i], numPix),silent = TRUE)
+            imgData <- try(read_data(paste0(chunkFolder,img), numPix),silent = TRUE)
             if (inherits(imgData, 'try-error')) {cat(paste('getIndexQuantile: Error for chunk',chunk,imgList[i]), file=errorLog, append=T);next} 
             
           } else {
             imgData <- read_data(chunkFold,imgList[i], numPix)
           }
+
           imgData[imgData == params$phenology_parameters$snowFillVal] <- NA
           imgData <- imgData / 10000
           b2[,i] <- imgData[,1]; b3[,i] <- imgData[,2]; b4[,i] <- imgData[,3]
@@ -378,7 +396,7 @@ getIndexQuantile <- function(chunk, numPix, yr, errorLog, params) {
         }
       }
     }
-  },silent=T)
+  },silent=SILENCE_TRY_BOOLEAN)
   
   return(indexOut)
 }
@@ -390,7 +408,7 @@ getIndexQuantile <- function(chunk, numPix, yr, errorLog, params) {
 #Overwrite existing image chunks with new, corrected data
 #Douglas Bolton
 #---------------------------------------------------------------------
-runTopoCorrection <- function(imgName, groups, slopeVals, aspectVals, chunkStart,chunkEnd, errorLog, params, writeImages=FALSE, slope=NULL) {
+runTopoCorrection <- function(imgName, groups, slopeVals, aspectVals, chunkStart,chunkEnd, errorLog, params, writeImages=FALSE, slope=NULL, DEBUG=FALSE) {
   
   pheno_pars <- params$phenology_parameters
   topo_pars <- params$topocorrection_parameters
@@ -469,9 +487,12 @@ runTopoCorrection <- function(imgName, groups, slopeVals, aspectVals, chunkStart
     if (file.exists(fName)) {
       numPix <- length(chunkStart[n]:chunkEnd[n])
 
-      # TODO: Add DEBUG support here
-      imgData <- try(matrix(readRDS(fName),nrow=numPix),silent = TRUE)
-      if (inherits(imgData, 'try-error')) {cat(paste('runTopoCorrection: Error for chunk',n,outBase), file=errorLog, append=T);next}
+      if(DEBUG == FALSE){
+        imgData <- try(read_data(fName, numPix),silent = TRUE)
+        if (inherits(imgData, 'try-error')) {cat(paste('runTopoCorrection: Error for chunk',n,outBase), file=errorLog, append=T);next}
+      } else {
+        imgData <- read_data(fName, numPix)
+      }
       bands[chunkStart[n]:chunkEnd[n],] <- imgData
       remove(imgData)
     }
@@ -548,8 +569,8 @@ runTopoCorrection <- function(imgName, groups, slopeVals, aspectVals, chunkStart
 #Write phenology results for each chunk to disk
 #Douglas Bolton
 #---------------------------------------------------------------------
-runPhenoChunk <- function(chunk, numPix, imgYrs, phenYrs, errorLog, params) {
-  
+runPhenoChunk <- function(chunk, numPix, imgYrs, phenYrs, errorLog, params, DEBUG=FALSE) {
+
   pheno_pars <- params$phenology_parameters
   
   #Get all images to process
@@ -583,9 +604,13 @@ runPhenoChunk <- function(chunk, numPix, imgYrs, phenYrs, errorLog, params) {
   for (i in 1:length(ord)) {
     img <- imgList[ord[i]]
 
-    # TODO: Add DEBUG support here
-    imgData <- try(matrix(readRDS(paste0(chunkFold,img)),nrow=numPix),silent = TRUE)
-    if (inherits(imgData, 'try-error')) {cat(paste('runPhenoChunk: Error for chunk',chunk,img), file=errorLog, append=T);next} 
+
+    if(DEBUG == FALSE){
+      imgData <- try(read_data(paste0(chunkFold,img), numPix),silent = TRUE)
+      if (inherits(imgData, 'try-error')) {cat(paste('runPhenoChunk: Error for chunk',chunk,img), file=errorLog, append=T);next} 
+    } else {
+      imgData <- read_data(paste0(chunkFold,img), numPix)
+    }
     
     b2[,i] <- imgData[,1]; b3[,i] <- imgData[,2]; b4[,i] <- imgData[,3]
     b5[,i] <- imgData[,4]; b6[,i] <- imgData[,5]; b7[,i] <- imgData[,6]
@@ -682,7 +707,10 @@ runPhenoChunk <- function(chunk, numPix, imgYrs, phenYrs, errorLog, params) {
 #Developed by Eli Melaas
 #Rewritten by Douglas Bolton to only run rotational model (Tan et al. 2010) and to have a stratified sample of pixels based on IL
 #---------------------------------------------------------------------
-topocorr_rotational_by_group <-function(x, groups, slope, aspect, sunzenith, sunazimuth, topo_pars, plotBaseName, IL.epsilon=0.000001) {
+topocorr_rotational_by_group <-function(x, groups, slope, aspect, sunzenith, sunazimuth, topo_pars, plotBaseName, IL.epsilon=0.000001, DEBUG=FALSE) {
+
+  SILENCE_TRY_BOOLEAN <- get_silence_try_arg(DEBUG)
+
   # topographic correction for image x based on topography and sun location
   
   #IMPORTANT: slope, aspect, sunzenith, sunazimuth must be in radians! 
@@ -725,8 +753,8 @@ topocorr_rotational_by_group <-function(x, groups, slope, aspect, sunzenith, sun
       breaks <- seq(quantile(ilSub,prob=0.02),quantile(ilSub,prob=0.98),length.out=(topo_pars$numILclass+1))    #Using 2 and 98% percentiles to reduce influece of outliers
       breaks[1] <- min(ilSub); breaks[length(breaks)] <- max(ilSub)
 
-      # TODO: Add DEBUG support here
-      ilGroup <- try({as.numeric(cut(ilSub,breaks=breaks,labels=1:topo_pars$numILclass,include.lowest=T))},silent=T)  #Group pixels
+
+      ilGroup <- try({as.numeric(cut(ilSub,breaks=breaks,labels=1:topo_pars$numILclass,include.lowest=T))},silent=SILENCE_TRY_BOOLEAN)  #Group pixels
       if (inherits(ilGroup, 'try-error')) {next}    #If pixels can't be grouped, move on
       pixID <- 1:length(ilGroup)
       pixToSample <- matrix(0,length(pixID))
@@ -748,7 +776,6 @@ topocorr_rotational_by_group <-function(x, groups, slope, aspect, sunzenith, sun
       #If image outputs were requested, then create some IL scatterplots
       if (!is.null(plotBaseName)) {
 
-        # TODO: Add DEBUG support here
         try({
           if (b == 3 | b == 4) {   #only for RED and NIR channel
             
@@ -763,7 +790,7 @@ topocorr_rotational_by_group <-function(x, groups, slope, aspect, sunzenith, sun
             toWrite <- cbind(as.vector(ilSub[pixToSample == 1]), as.vector(bandSub[pixToSample == 1]))
             saveRDS(toWrite,paste0(plotBaseName,'_b',b,'_c',clType,'.Rds'))
           }
-        })
+        }, silent = SILENCE_TRY_BOOLEAN)
       }
     }
   }
@@ -1344,11 +1371,12 @@ GetSegMetricsLight <- function(seg, smooth_dates, raw_dates){
 #For now, returning evi amplitude and evi maximum
 #Douglas Bolton
 #----------------------------------------------------------
-annualMetrics <- function(smoothed_vi, pred_dates, filled_vi, baseWeight, yr, pheno_pars) {
-  
+annualMetrics <- function(smoothed_vi, pred_dates, filled_vi, baseWeight, yr, pheno_pars, DEBUG=FALSE) {
+
+  SILENCE_TRY_BOOLEAN <- get_silence_try_arg(DEBUG)
+
   out <- matrix(NA,pheno_pars$numLyrs)
 
-  # TODO: Add DEBUG support here
   try({
     inyear <- as.numeric(format(pred_dates,'%Y')) == yr
     vi_inyear  <- smoothed_vi[inyear]
@@ -1369,7 +1397,7 @@ annualMetrics <- function(smoothed_vi, pred_dates, filled_vi, baseWeight, yr, ph
     ind <- ind & baseWeight == 1   #If weight is less than 1, implies it is a snow-fill, and we don't want to count snow-filled as a valid observation. 
     out[pheno_pars$loc_numObs] <- sum(ind)
     out[pheno_pars$loc_maxGap] <- as.numeric(max(diff(c( min(pred_dates[inyear]), pred_dates[ind], max(pred_dates[inyear])))))
-  },silent=T)
+  },silent=SILENCE_TRY_BOOLEAN)
   return(out)}
 
 
@@ -1444,10 +1472,11 @@ calculateWeights <- function(smoothMat_Masked, numDaysFit, numYrs, pheno_pars) {
 #Code adapted by Douglas Bolton
 #Based on MODIS C6 algorithm developed by Josh Gray
 #---------------------------------------------------------------------
-DoPhenologyHLS <- function(b2, b3, b4, b5, b6, b7, vi, snowPix, dates, imgYrs, phenYrs, splineStart, splineEnd, numDaysFit, pheno_pars, errorLog){
+DoPhenologyHLS <- function(b2, b3, b4, b5, b6, b7, vi, snowPix, dates, imgYrs, phenYrs, splineStart, splineEnd, numDaysFit, pheno_pars, errorLog, DEBUG=FALSE){
   
+  SILENCE_TRY_BOOLEAN <- get_silence_try_arg(DEBUG)
+
   #Despike, calculate dormant value, fill snow with dormant value, despike poorly fit snow values
-  #TODO: Add debug support here
 
   log <- try({
     #Despike
@@ -1532,7 +1561,6 @@ DoPhenologyHLS <- function(b2, b3, b4, b5, b6, b7, vi, snowPix, dates, imgYrs, p
     for (y in 1:numYrs) {
       #Use try statement, because we don't want to stop processing if only an error in one year
 
-      # TODO: Add DEBUG support here
       try({
 
         dateRange <- dates >= splineStart[y] & dates <= splineEnd[y] & !is.na(vi)
@@ -1565,7 +1593,7 @@ DoPhenologyHLS <- function(b2, b3, b4, b5, b6, b7, vi, snowPix, dates, imgYrs, p
         b2Mat[fillDs,y] <- b2[dateRange]; b3Mat[fillDs,y] <- b3[dateRange]; b4Mat[fillDs,y] <- b4[dateRange]
         b5Mat[fillDs,y] <- b5[dateRange]; b6Mat[fillDs,y] <- b6[dateRange]; b7Mat[fillDs,y] <- b7[dateRange]
 
-      },silent=TRUE)
+      },silent=SILENCE_TRY_BOOLEAN)
     }
 
 
@@ -1594,7 +1622,7 @@ DoPhenologyHLS <- function(b2, b3, b4, b5, b6, b7, vi, snowPix, dates, imgYrs, p
     inYear <- daysVec > pheno_pars$splineBuffer & daysVec <= (pheno_pars$splineBuffer+365)
     nextYear <- daysVec > (pheno_pars$splineBuffer+365)
 
-  },silent=TRUE)
+  },silent=SILENCE_TRY_BOOLEAN)
   #If there is an error despiking or other initial steps, return NAs
   if(inherits(log, "try-error")){return(matrix(NA,pheno_pars$numLyrs*length(phenYrs)))}
   
@@ -1602,7 +1630,6 @@ DoPhenologyHLS <- function(b2, b3, b4, b5, b6, b7, vi, snowPix, dates, imgYrs, p
   
   for (y in yToDo) {
 
-    # TODO: Add DEBUG support here
     log <- try({
 
       pred_dates <- seq(splineStart[y], splineEnd[y], by="day")
@@ -1770,7 +1797,7 @@ DoPhenologyHLS <- function(b2, b3, b4, b5, b6, b7, vi, snowPix, dates, imgYrs, p
                    numObs, numObs_count_snow, maxGap_annual, maxGap_annual_count_snow)
         }
       }
-    },silent=TRUE)  #End of the try block
+    },silent=SILENCE_TRY_BOOLEAN)  #End of the try block
     if(inherits(log, "try-error")){outAll <- c(outAll,matrix(NA,pheno_pars$numLyrs))
     } else {outAll <- c(outAll,out);remove(out)}
   }
@@ -1879,13 +1906,14 @@ CreateQA <- function(qaFile, waterMask, yr, params) {
 #Reconstruct output images from chunks (.Rds) in order to make netCDF
 #Written by Douglas Bolton
 #---------------------------------------------------------------------
-readLyrChunks <- function(lyr, yr, numChunks, numPix, tempDir) {
+readLyrChunks <- function(lyr, yr, numChunks, numPix, tempDir, DEBUG=FALSE) {
+  SILENCE_TRY_BOOLEAN <- get_silence_try_arg(DEBUG)
+
   mat <- matrix(NA,numPix,1)
   for (n in 1:numChunks) {
     fileName <- paste0(tempDir,'outputs/y',yr,'/lyr',lyr,'/c',n,'.Rds')
 
-    # TODO: Add DEBUG support here
-    matSub <- try(readRDS(fileName),silent=T)
+    matSub <- try(readRDS(fileName),silent=SILENCE_TRY_BOOLEAN)
     if (inherits(matSub, 'try-error')) {next} 
     mat[chunkStart[n]:chunkEnd[n]] <- matSub
   }
