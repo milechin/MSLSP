@@ -6,6 +6,12 @@
 
 start_time <- Sys.time()
 
+# Checking if gdalwarp is available
+ret <- system2("which gdalwarp")
+if(ret != 0){
+  stop("gdalwarp is not available. Stopping execution.")
+}
+
 
 
 #Load required libraries
