@@ -56,6 +56,7 @@ errorLog <- args[4]
 # If set to TRUE, this will not silent errors when try{} is executed and will terminate 
 # the program when an error is encountered.
 # For production set to FALSE to skip over errors and continue processing.
+# This will also run some select %dopar% loops in serial to better debug issues.
 DEBUG=TRUE
 
 
