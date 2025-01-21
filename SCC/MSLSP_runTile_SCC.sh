@@ -28,7 +28,7 @@ timeStamp=$3
 rScript=$MSLSP_BASE_DIR/$( jq --raw-output .SCC.rScript $parameters )
 dataDir=$MSLSP_BASE_DIR/$( jq --raw-output .SCC.dataDir $parameters )
 workDir=$MSLSP_BASE_DIR/$( jq --raw-output .SCC.workDir $parameters )
-imgDir=$MSLSP_BASE_DIR/$( jq --raw-output .dirs.imgDir $parameters )
+imgDir=$( jq --raw-output .dirs.imgDir $parameters )
 logDir=$MSLSP_BASE_DIR/$( jq --raw-output .SCC.logDir $parameters ) 
 numCores=$( jq --raw-output .SCC.numCores $parameters ) 
 
@@ -47,9 +47,8 @@ tempParams=${parameters}".tmp"
 #   cp ${parameters} ${tempParams}; jq --arg fmask10m "$fmask10m" '.dirs.fmask10m = $fmask10m' ${tempParams}>${parameters}
 # fi
 
-
-tempDir="${workDir}${tile}/temp/"	
-chunkDir="${workDir}${tile}/imageChunks/"
+tempDir="${TMPDIR}/${tile}/temp/"	
+chunkDir="${TMPDIR}/${tile}/imageChunks/"
 phenDir="${workDir}${tile}/phenoMetrics/"
 
 mkdir -p $tempDir
