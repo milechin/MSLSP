@@ -196,7 +196,7 @@ ApplyMask_QA <-function(imgName, tile, waterMask, chunkStart, chunkEnd, params, 
     tifBase <- paste0(params$dirs$tempDir, imgName_strip)
     for (bName in bNames) {
       inName <- paste0(theBase, '_', bName,'_20m.tif');outName <- paste0(tifBase,bName,'.tif')
-      run <- try({system2("gdalwarp",paste("-overwrite -r near -ts 1098 1098 -of GTiff",inName,outName),stdout=T,stderr=T)},silent=T)
+      run <- try({system2("gdalwarp",paste("-overwrite -r near -ts 10980 10980 -of GTiff",inName,outName),stdout=T,stderr=T)},silent=T)
     }
     
     fullNames <- c(paste0(theBase, '_', c('B02','B03','B04', 'B08'), '_10m.tif'), 
