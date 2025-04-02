@@ -151,7 +151,7 @@ if(params$setup$AWS_or_SCC == "SCC" & params$SCC$runS10) {
     if(file.exists(newMask) == FALSE){
       run <- try(
         {
-          system2("gdalwarp", paste("-overwrite -r near -ts 1098 1098 -of GTiff", img, newMask),
+          system2("gdalwarp", paste("-overwrite -r near -ts 10980 10980 -of GTiff", img, newMask),
           stdout=T,
           stderr=T)
         },
@@ -198,11 +198,11 @@ keep <- (years >= (imgStartYr - 1)) & (years <= (imgEndYr + 1))  #Only keep imag
 if (!params$setup$includeLandsat) {drop <- sensor == 'L30'; keep[drop] <- FALSE}
 if (!params$setup$includeSentinel) {drop <- sensor == 'S30'; keep[drop] <- FALSE}  
 
-imgList <- imgList[keep]
-yrdoy <- yrdoy[keep]
-doys <- doys[keep]
-years <- years[keep]
-sensor <- sensor[keep]
+imgList <- imgList[!is.na(keep)]
+yrdoy <- yrdoy[!is.na(keep)]
+doys <- doys[!is.na(keep)]
+years <- years[!is.na(keep)]
+sensor <- sensor[!is.na(keep)]
 
 
 uniqueYrs <- sort(unique(years))  #What years do we actually have imagery for? (imgYears +/- 1 for buffer years)
